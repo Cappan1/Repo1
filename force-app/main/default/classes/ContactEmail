@@ -1,7 +1,0 @@
-Public class contactEmail implements Database.Batchable<sObject> {
-    
-    
-public Database.QueryLocator start (Database.BatchableContext bc) {
-return Database.getQueryLocator('Select ID,Email FROM Contact WHERE EMAIL ');
-}
-}
