@@ -1,0 +1,46 @@
+public class OpportunityService {
+
+    public static void rollUpToAccount(Map<Id, Opportunity> oldMap, Map<Id, Opportunity> newMap) {
+        Set<Id> accountIds = new Set<Id>();
+
+        if (newMap == null) {
+            for (Opportunity o : oldMap.values()) {
+                accountIds.add(o.AccountId);
+            }
+        } else {
+            for (Opportunity o : newMap.values()) {
+                if (oldMap == null || oldMap.get(o.Id).Amount != o.Amount) {
+                    accountIds.add(o.AccountId);
+                }
+            }
+        }
+
+        updateTotalAmount(accountIds);
+    }
+
+    private static void updateTotalAmount(Set<Id> accountIds) {
+        List<Account> accountsToUpdate = new List<Account>();
+        Map<Id, List<Opportunity>> opportunitiesByAccountIds = new Map<Id, List<Opportunity>>();
+
+        for (Opportunity o : [SELECT Id, Amount, AccountId FROM Opportunity WHERE AccountId IN :accountIds]) {
+            if (!opportunitiesByAccountIds.containsKey(o.AccountId)) {
+                opportunitiesByAccountIds.put(o.AccountId, new List<Opportunity>());
+            }
+            opportunitiesByAccountIds.get(o.AccountId).add(o);
+        }
+
+        for (Account a : [SELECT Id, totalAmount__c FROM Account WHERE Id IN :accountIds]) {
+            a.totalAmount__c = 0;
+            for (Opportunity o : opportunitiesByAccountIds.get(a.Id)) {
+                a.totalAmount__c += o.Amount;
+            }
+            accountsToUpdate.add(a);
+        }
+
+        try {
+            update accountsToUpdate;
+        } catch (DmlException e) {
+            Logger.logException(e.getMessage(), e.getTypeName(), e.getLineNumber());
+        }
+    }
+}
